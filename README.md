@@ -1,66 +1,104 @@
-**Inventory and Order Management System (IMS)**
+# Inventory & Order Management System
 
-A professional, containerized full-stack Inventory and Order Management application. The system features a responsive React administrative user interface dashboard, 
-a robust FastAPI backend service engine, and a managed relational PostgreSQL database layer.
+A production-grade, containerized full-stack application for inventory and order management — deployed live across globally distributed cloud infrastructure.
 
-The entire development lifecycle utilizes Podman container orchestration for local isolation and parity, and is fully deployed to production using separate
-cloud infrastructures via a Continuous Integration / Continuous Deployment (CI/CD) pipeline.
+**Live Demo:** [inventory-system-one-lac.vercel.app](https://inventory-system-one-lac.vercel.app)  
+**API Docs (Swagger):** [inventory-backend-api-jpoo.onrender.com/docs](https://inventory-backend-api-jpoo.onrender.com/docs)  
+**Container Image:** `docker.io/namrathabp/inventory-backend:latest`
 
-🌐** Live Production Access**
+---
 
-The application is fully live, publicly accessible, and distributed across globally optimized web networks:
+## Tech Stack
 
-Production Frontend (UI Dashboard): https://inventory-system-one-lac.vercel.app
+| Layer | Technology |
+|---|---|
+| Backend API | FastAPI + Uvicorn |
+| Database | PostgreSQL (managed, Render) |
+| ORM | SQLAlchemy |
+| Frontend | React + Vite |
+| Containerisation | Docker + docker-compose (Podman-compatible) |
+| Testing | Pytest (async, CRUD + schema coverage) |
+| Deployment | Vercel (frontend) · Render (backend + DB) |
+| API Docs | Swagger / OpenAPI (auto-generated) |
 
-Production Backend Gateway (API Docs): https://inventory-backend-api-jpoo.onrender.com/docs
+---
 
-Public Container Image Registry: docker.io/namrathabp/inventory-backend:latest
+## Architecture
 
-🏗️ **Cloud Infrastructure Architecture**
+```
+[ React/Vite UI ]  ──(HTTPS + CORS)──▶  [ FastAPI Gateway ]  ──(SQLAlchemy ORM)──▶  [ PostgreSQL ]
+   Vercel CDN                               Render Web Service                        Render Managed DB
+```
 
-To maximize data persistence, speed, and reliability, the system abandons monolithic hosting and abstracts the stack into dedicated cloud infrastructure zones:
+Three independent cloud zones — decoupled for reliability, zero data loss on container restarts.
 
-[ React Client UI ] --------(HTTPS + CORS)--------> [ FastAPI Gateway ]
-  (Hosted on Vercel)                                  (Hosted on Render)
-                                                             |
-                                                       (SQLAlchemy ORM)
-                                                             v
-                                                    [ Managed PostgreSQL ]
-                                                      (Hosted on Render)
-                                                      
-1. UI Core Layer (Vercel): Hosts the static React/Vite compilation. Environment variables route dynamic state updates to the remote API gateway securely.
+---
 
-2. API Routing Node (Render Web Services): An isolated Linux container running an optimized multi-stage Python/Uvicorn distribution instance.
+## Features
 
-3. Persistence Layer (Render PostgreSQL): A managed, independent relational instance decoupled from the ephemeral container lifecycles to guarantee zero-loss
-   transactional history.
+- Full CRUD for products, orders, and inventory records
+- Real-time stock level tracking with low-stock alerts
+- Order lifecycle management (pending → fulfilled → closed)
+- Category-based product filtering and search
+- RESTful API with full Swagger/OpenAPI documentation
+- Containerised multi-stage Docker builds (frontend + backend)
+- Async pytest suite covering isolated CRUD workflows, relational order mapping, and schema checks
 
-🛠️ **Local Environment & Containerization Setup**
+---
 
-The project uses decoupled multi-stage builds to optimize image layer distribution sizes and strip development environments from production runtimes.
+## Running Locally
 
-Frontend Architecture (frontend/Dockerfile)
+### Prerequisites
+- Docker / Podman + docker-compose
 
-Uses an alpine-based node staging layer to bundle React assets into compressed, flat files, which are immediately loaded onto a root privilege-free production 
-Nginx web proxy engine listening internally on port 8080.
+### One command startup
 
-Backend Architecture (backend/Dockerfile)
-
-Exposes Uvicorn services directly while mapping dynamic context pointers onto decoupled environmental drivers (DATABASE_URL).
-
-**To launch the full system locally using container orchestration, run this command from the root directory:**
-
+```bash
+git clone https://github.com/Namrathabp/Inventory_system.git
+cd Inventory_system
 podman-compose up --build -d
+# or: docker-compose up --build -d
+```
 
-Local Frontend: http://localhost:3000
+| Service | URL |
+|---|---|
+| Frontend | http://localhost:3000 |
+| Backend API | http://localhost:8000 |
+| Swagger Docs | http://localhost:8000/docs |
 
-Local Backend: http://localhost:8000
+### Run Tests
 
-🧪 **Automated End-to-End Test Suite**
-
-Automated transaction verification is built natively via the pytest engine. The suite covers isolated CRUD workflows, relational order mapping transactions, 
-and schema structural checks. Tests run asynchronously using an inline environment pointer execution sequence inside the running backend service block.
-Run the following command in your terminal to force containerized execution checks:
-
+```bash
 podman exec -it fastapi_backend_container env PYTHONPATH=. pytest app/test_main.py -v
+```
 
+---
+
+## API Highlights
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/products/` | List all products with stock levels |
+| POST | `/products/` | Create a new product |
+| PATCH | `/products/{id}/stock` | Update stock quantity |
+| GET | `/orders/` | List all orders |
+| POST | `/orders/` | Create a new order |
+| PATCH | `/orders/{id}/status` | Update order status |
+| GET | `/docs` | Interactive Swagger UI |
+
+---
+
+## Deployment
+
+**Frontend (Vercel):** Static React/Vite build served via Vercel CDN. Environment variables route API calls to the Render backend.
+
+**Backend (Render):** Multi-stage Docker build running an optimised Uvicorn instance. DATABASE_URL injected via environment variable at runtime.
+
+**Database (Render PostgreSQL):** Managed, independent relational instance — decoupled from container lifecycle to guarantee zero-loss transactional history.
+
+---
+
+## Author
+
+**Namratha B P** — Python Backend Developer  
+[LinkedIn](https://linkedin.com/in/NamrathaBP) · [GitHub](https://github.com/Namrathabp) · namrathabp123@gmail.com
