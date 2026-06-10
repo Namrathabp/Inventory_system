@@ -1,14 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import Register from './components/Register';
+import React, { useState, useEffect, useContext } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { AuthProvider, AuthContext } from './context/AuthContext';
+import Login from './components/Login';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
-export default function App() {
+// ==========================================
+// 1. THE ADMIN DASHBOARD COMPONENT
+// ==========================================
+function AdminDashboard() {
+  const { logout } = useContext(AuthContext); // Bring in the logout function!
   const [view, setView] = useState('dashboard');
   const [stats, setStats] = useState({ total_products: 0, total_customers: 0, total_orders: 0, low_stock_count: 0 });
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [orders, setOrders] = useState([]);
-  
   const [alert, setAlert] = useState({ message: '', type: '' });
 
   // Forms States
@@ -22,23 +30,26 @@ export default function App() {
     setTimeout(() => setAlert({ message: '', type: '' }), 4000);
   };
 
+  // HELPER: Grab the token from local storage
+  const getAuthHeaders = () => ({
+    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+    'Content-Type': 'application/json'
+  });
+
   const fetchData = async () => {
     try {
-      const sRes = await fetch(`${API_BASE_URL}/dashboard`);
-      const sData = await sRes.json();
-      setStats(sData);
+      // Notice we added the Authorization headers to every fetch!
+      const sRes = await fetch(`${API_BASE_URL}/dashboard`, { headers: getAuthHeaders() });
+      if(sRes.ok) setStats(await sRes.json());
 
-      const pRes = await fetch(`${API_BASE_URL}/products`);
-      const pData = await pRes.json();
-      setProducts(pData);
+      const pRes = await fetch(`${API_BASE_URL}/products`, { headers: getAuthHeaders() });
+      if(pRes.ok) setProducts(await pRes.json());
 
-      const cRes = await fetch(`${API_BASE_URL}/customers`);
-      const cData = await cRes.json();
-      setCustomers(cData);
+      const cRes = await fetch(`${API_BASE_URL}/customers`, { headers: getAuthHeaders() });
+      if(cRes.ok) setCustomers(await cRes.json());
 
-      const oRes = await fetch(`${API_BASE_URL}/orders`);
-      const oData = await oRes.json();
-      setOrders(oData);
+      const oRes = await fetch(`${API_BASE_URL}/orders`, { headers: getAuthHeaders() });
+      if(oRes.ok) setOrders(await oRes.json());
     } catch (err) {
       showAlert('Failed to fetch data from backend service API', 'error');
     }
@@ -60,22 +71,26 @@ export default function App() {
 
     const res = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(), // Secured!
       body: JSON.stringify(productForm)
     });
-    const data = await res.json();
+    
     if (res.ok) {
       showAlert(editingProductId ? 'Product Updated!' : 'Product Created!');
       setProductForm({ name: '', sku: '', price: '', quantity: '' });
       setEditingProductId(null);
       fetchData();
     } else {
+      const data = await res.json();
       showAlert(data.detail || 'Error saving resource', 'error');
     }
   };
 
   const deleteProduct = async (id) => {
-    await fetch(`${API_BASE_URL}/products/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/products/${id}`, { 
+      method: 'DELETE', 
+      headers: getAuthHeaders() // Secured!
+    });
     showAlert('Product dropped.');
     fetchData();
   };
@@ -85,21 +100,24 @@ export default function App() {
     e.preventDefault();
     const res = await fetch(`${API_BASE_URL}/customers`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(), // Secured!
       body: JSON.stringify(customerForm)
     });
-    const data = await res.json();
     if (res.ok) {
       showAlert('Customer added successfully');
       setCustomerForm({ name: '', email: '', phone: '' });
       fetchData();
     } else {
+      const data = await res.json();
       showAlert(data.detail || 'Error saving structural parameters', 'error');
     }
   };
 
   const deleteCustomer = async (id) => {
-    await fetch(`${API_BASE_URL}/customers/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/customers/${id}`, { 
+      method: 'DELETE',
+      headers: getAuthHeaders() // Secured!
+    });
     showAlert('Customer mapping deleted.');
     fetchData();
   };
@@ -109,29 +127,31 @@ export default function App() {
     e.preventDefault();
     const res = await fetch(`${API_BASE_URL}/orders`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(), // Secured!
       body: JSON.stringify(orderForm)
     });
-    const data = await res.json();
     if (res.ok) {
       showAlert('Order created safely.');
       setOrderForm({ customer_id: '', product_id: '', quantity: '' });
       fetchData();
     } else {
+      const data = await res.json();
       showAlert(data.detail || 'Order execution error validation rules applied', 'error');
     }
   };
 
   const cancelOrder = async (id) => {
-    await fetch(`${API_BASE_URL}/orders/${id}`, { method: 'DELETE' });
+    await fetch(`${API_BASE_URL}/orders/${id}`, { 
+      method: 'DELETE',
+      headers: getAuthHeaders() // Secured!
+    });
     showAlert('Order status cancelled, logic restocked.');
     fetchData();
   };
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row font-sans">
-      {/* Sidebar navigation controls */}
-      <nav className="w-full md:w-64 bg-slate-800 text-white p-6 space-y-4">
+      <nav className="w-full md:w-64 bg-slate-800 text-white p-6 space-y-4 flex flex-col">
         <h1 className="text-xl font-bold tracking-wider mb-6">IMS Dashboard</h1>
         {['dashboard', 'products', 'customers', 'orders'].map((t) => (
           <button 
@@ -142,6 +162,15 @@ export default function App() {
             {t}
           </button>
         ))}
+        {/* ADDED SECURE LOGOUT BUTTON */}
+        <div className="mt-auto pt-10">
+            <button 
+                onClick={logout} 
+                className="w-full text-left text-red-400 hover:text-red-300 hover:bg-slate-700 p-2 rounded transition-colors"
+            >
+                Secure Logout
+            </button>
+        </div>
       </nav>
 
       {/* Main Content Area Container */}
@@ -315,5 +344,49 @@ export default function App() {
         )}
       </main>
     </div>
+  );
+}
+
+// ==========================================
+// 2. THE MAIN APPLICATION ROUTER
+// ==========================================
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Public Route */}
+          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<Login />} />
+
+          {/* Secure Admin Route */}
+          <Route 
+            path="/admin/*" 
+            element={
+              <ProtectedRoute allowedRole="admin">
+                {/* The AdminDashboard component is now safely locked inside this route! */}
+                <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Secure Customer Route */}
+          <Route 
+            path="/store/*" 
+            element={
+              <ProtectedRoute allowedRole="customer">
+                <div className="p-10 text-center">
+                    <h1 className="text-3xl font-bold">Customer Storefront</h1>
+                    <p className="mt-4">This view is currently under construction. Check back soon!</p>
+                </div>
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Fallback Route: Send everyone to login by default */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

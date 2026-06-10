@@ -1,6 +1,11 @@
 from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
-from . import models, schemas
+from fastapi import HTTPException, Depends, status
+from . import schemas
+
+# This links your other local files!
+from . import models, auth
+from .schemas import ProductSchema
+from .database import get_db
 
 # --- PRODUCTS ---
 def get_products(db: Session):
@@ -9,7 +14,7 @@ def get_products(db: Session):
 def get_product(db: Session, product_id: int):
     return db.query(models.Product).filter(models.Product.id == product_id).first()
 
-def create_product(db: Session, product: schemas.ProductCreate):
+def create_product(product: schemas.ProductSchema, db: Session):
     db_product = db.query(models.Product).filter(models.Product.sku == product.sku).first()
     if db_product:
         raise HTTPException(status_code=400, detail="SKU already exists")

@@ -1,7 +1,10 @@
-from fastapi import FastAPI, Depends, status
+from fastapi import FastAPI, Depends, status, HTTPException
+from pydantic import BaseModel, EmailStr
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
+from . import models
+from . import auth
 
 from .database import engine, Base, get_db
 from . import crud, schemas, models
@@ -18,6 +21,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class RegisterSchema(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+    role: str = "customer"
+
+class LoginSchema(BaseModel):
+    username: str
+    password: str
 
 # --- DASHBOARD SUMMARY ---
 @app.get("/api/dashboard", response_model=schemas.DashboardStats)
@@ -88,3 +101,46 @@ def add_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
 @app.delete("/api/orders/{id}")
 def cancel_order(id: int, db: Session = Depends(get_db)):
     return crud.delete_order(db, id)
+
+# --- AUTHENTICATION ENDPOINTS ---
+
+@app.post("/api/auth/register", status_code=201)
+def register_user(payload: RegisterSchema, db: Session = Depends(get_db)):
+    # Check if identity handles exist
+    if db.query(models.User).filter(models.User.username == payload.username).first():
+        raise HTTPException(status_code=400, detail="Username already registered")
+        
+    if payload.role not in ["admin", "customer"]:
+        raise HTTPException(status_code=400, detail="Invalid assignment role context")
+
+    hashed_pwd = auth.hash_password(payload.password)
+    new_user = models.User(
+        username=payload.username,
+        email=payload.email,
+        hashed_password=hashed_pwd,
+        role=payload.role
+    )
+    db.add(new_user)
+    db.commit()
+    return {"message": "Account initialized successfully"}
+
+@app.post("/api/auth/login")
+def login_user(payload: LoginSchema, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == payload.username).first()
+    if not user or not auth.verify_password(payload.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+
+    # Pack credentials into our signed token
+    token_data = {"sub": user.username, "role": user.role}
+    token = auth.create_access_token(data=token_data)
+    
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "role": user.role,
+        "username": user.username
+    }
+
+@app.get("/api/secure-test")
+def test_my_security(admin_user: models.User = Depends(auth.require_admin)):
+    return {"message": "If you can read this, you have an Admin token!"}

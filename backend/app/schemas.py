@@ -62,3 +62,12 @@ class DashboardStats(BaseModel):
     total_customers: int
     total_orders: int
     low_stock_count: int
+
+class ProductSchema(BaseModel):
+    name: str
+    sku: str
+    price: float
+    quantity: int
+
+    class Config:
+        from_attributes = True
