@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import Login from './components/Login';
 import ProtectedRoute from './components/ProtectedRoute';
+import Storefront from './components/Storefront';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -375,10 +376,7 @@ export default function App() {
             path="/store/*" 
             element={
               <ProtectedRoute allowedRole="customer">
-                <div className="p-10 text-center">
-                    <h1 className="text-3xl font-bold">Customer Storefront</h1>
-                    <p className="mt-4">This view is currently under construction. Check back soon!</p>
-                </div>
+                <Storefront />
               </ProtectedRoute>
             } 
           />
